@@ -13,7 +13,10 @@
 
 ; BEGIN:clear_leds
 clear_leds:
-; your implementation code
+; put LEDS[0..2] to 0x00000000
+stw zero, LEDS(zero) ; Set LEDS[0] to 0
+stw zero, LEDS+4(zero) ; Set LEDS[1] to 0
+stw zero, LEDS+8(zero) ; Set LEDS[2] to 0
 ret
 ; END:clear_leds
 
@@ -72,3 +75,6 @@ restart_game:
 ; your implementation code
 ret
 ; END:restart_game
+
+
+call clear_leds
