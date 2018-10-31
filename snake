@@ -52,7 +52,7 @@ draw_array:
 ret
 ; END:draw_array
 
-; -------------------------------------------------------------------------------------------
+
 ; BEGIN:get_input
 get_input:
 	;--- 1 . load the value of the head
@@ -101,16 +101,8 @@ get_input:
 	slli t5,t5,3 ; on mets les 3 derniers bits a 0 et on additionne avec la direction voulu
 	add t5,t5,t7
 	stw t5, GSA(t4) ; on update la memoire
-	
-	
-
-
-	
-	
-
-
+	ret
 ; END:get_input
-;--------------------------------------------
 
 
 ; BEGIN:move_snake
