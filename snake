@@ -9,4 +9,4 @@
 .equ RANDOM_NUM, 0x2010 ; Random number generator address
 .equ BUTTONS,    0x2030 ; Button addresses
 
-ldw t1, SCORE (zero)
+;ldw t1, SCORE (zero)
