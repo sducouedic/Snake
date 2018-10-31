@@ -11,6 +11,17 @@
 
 ;ldw t1, SCORE (zero) ; load the score in t1
 
+
+
+call clear_leds
+addi a0,r0,3 ; x = 3
+addi a1,r0,4 ; y = 4
+call set_pixel
+
+addi a0,r0,2 ; x = 4
+addi a1,r0,4 ; y = 4
+call set_pixel
+
 ; BEGIN:clear_leds
 clear_leds:
 ; put LEDS[0..2] to 0x00000000
@@ -23,7 +34,16 @@ ret
 
 ; BEGIN:set_pixel
 set_pixel:
-; your implementation code
+; ao:x and a1:y
+andi t0,a0,12 ; bits[3..2] de x
+andi t1,a0,3 ; bits[1..0] de x
+slli t2, t1,3 ;shift de 3 à gauche pour multiplier par 8 
+add t3, a1,t2 ; t3 est la position du bit voulu a 1
+addi t4,zero,1 ; vaut 1 que l'on va shifter de t3 positions
+sll t4, t4, t3
+ldw t5, LEDS(t0) ; On recupere la valeur initial du tableau de led
+or t5,t5,t4 ; on ajoute le led
+stw t5, LEDS(t0) ; Set LEDS[1] to 0
 ret
 ; END:set_pixel
 
@@ -75,6 +95,3 @@ restart_game:
 ; your implementation code
 ret
 ; END:restart_game
-
-
-call clear_leds
