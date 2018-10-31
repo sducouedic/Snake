@@ -14,13 +14,11 @@
 
 
 call clear_leds
-addi a0,r0,3 ; x = 3
-addi a1,r0,4 ; y = 4
-call set_pixel
+;addi a0,r0,3 ; x = 3
+;addi a1,r0,4 ; y = 4
+;call set_pixel
 
-addi a0,r0,2 ; x = 4
-addi a1,r0,4 ; y = 4
-call set_pixel
+call get_input
 
 ; BEGIN:clear_leds
 clear_leds:
@@ -35,8 +33,8 @@ ret
 ; BEGIN:set_pixel
 set_pixel:
 ; ao:x and a1:y
-andi t0,a0,12 ; bits[3..2] de x
-andi t1,a0,3 ; bits[1..0] de x
+andi t0,a0,12 ; bits[3,2] de x
+andi t1,a0,3 ; bits[1,0] de x
 slli t2, t1,3 ;shift de 3 à gauche pour multiplier par 8 
 add t3, a1,t2 ; t3 est la position du bit voulu a 1
 addi t4,zero,1 ; vaut 1 que l'on va shifter de t3 positions
@@ -54,12 +52,65 @@ draw_array:
 ret
 ; END:draw_array
 
-
+; -------------------------------------------------------------------------------------------
 ; BEGIN:get_input
 get_input:
-; your implementation code
-ret
+	;--- 1 . load the value of the head
+	ldw t0, HEAD_X(zero) 		; x coordinate of head
+	ldw t1, HEAD_Y(zero) 		; y coordinate of head
+
+	andi t2, t0, 12 	; bits[3,2] de x
+	slli t2, t2, 5 		; shift de 5 à gauche pour multiplier par 32
+
+	andi t3, t0, 3 		; bits[1,0] de x
+	slli t3, t3,8 		; shift de 3 à gauche pour multiplier par 8
+
+	add t4, t1,t3 		; t4 = head_y + 8 * head_x(1,0) = position dans une LED
+	add t4, t4,t2 		; t4 = 32 * head_x(3,2) + 8 * head_x(1,0) + head_y = position dans GSA
+
+	ldw t5, GSA(t4) 	; infos sur la head
+	
+	;--- 1.5 recuperer la direction actuelle
+	addi t6,zero,7 ; masque sur les 3 premiers bits pour savoir la direction
+	and t6,t6,t5 ; t6 est la direction actuelle
+	
+
+	;--- 2. get the Buttons info for the new direction
+	ldw t0, BUTTONS+4(zero)		; on mets dans t0 la valeur de edgecapture 
+	stw zero, BUTTONS+4(zero)   ; On reinitialise edgecapture
+
+	;--- 3. get in which direction we want to go
+	addi t7,zero,0
+	loop:
+	addi t7,t7,1 ; count++
+	addi t1,zero,1 ; Masque pour le bit 1
+	and t2,t0,t1 ; on recupere la valeur du bit 1
+	srli t0,t0,1 ; on shift de 1 vers la droite si on retourne dans la boucle
+	bne t2,t1, loop ; 
+
+	;---4. if directionActuelle + changement de direction = 5, alors c'est une direction oppose 1(left)+4(right) ou 2(up)+3(down)
+	;registre utilise actuellement: t4(position de la head),t5(variable tete), t6 (direction actuelle),t7 (direction voulu)
+	addi t0, zero ,5 ; direction oppose
+	add t1,t6,t7
+	
+	
+	;---5. update the head snake direction if not opposite direction !
+	bne t0,t1,4
+	ret ; ;if t1 == t0 (direction totale = 5) alors on ignore
+	srli t5,t5,3
+	slli t5,t5,3 ; on mets les 3 derniers bits a 0 et on additionne avec la direction voulu
+	add t5,t5,t7
+	stw t5, GSA(t4) ; on update la memoire
+	
+	
+
+
+	
+	
+
+
 ; END:get_input
+;--------------------------------------------
 
 
 ; BEGIN:move_snake
