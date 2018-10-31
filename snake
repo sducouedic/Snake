@@ -9,4 +9,66 @@
 .equ RANDOM_NUM, 0x2010 ; Random number generator address
 .equ BUTTONS,    0x2030 ; Button addresses
 
-;ldw t1, SCORE (zero)
+;ldw t1, SCORE (zero) ; load the score in t1
+
+; BEGIN:clear_leds
+clear_leds:
+; your implementation code
+ret
+; END:clear_leds
+
+
+; BEGIN:set_pixel
+set_pixel:
+; your implementation code
+ret
+; END:set_pixel
+
+
+; BEGIN:draw_array
+draw_array:
+; your implementation code
+ret
+; END:draw_array
+
+
+; BEGIN:get_input
+get_input:
+; your implementation code
+ret
+; END:get_input
+
+
+; BEGIN:move_snake
+move_snake:
+; your implementation code
+ret
+; END:move_snake
+
+
+; BEGIN:create_food
+create_food:
+; your implementation code
+ret
+; END:create_food
+
+
+; BEGIN:hit_test
+hit_test:
+; your implementation code
+ret
+; END:hit_test
+
+
+; BEGIN:display_score
+display_score:
+; your implementation code
+ret
+; END:display_score
+
+
+; BEGIN:restart_game
+restart_game:
+; your implementation code
+ret
+; END:restart_game
