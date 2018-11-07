@@ -13,19 +13,29 @@
 
 
 
-call clear_leds
-;addi a0,r0,3 ; x = 3
-;addi a1,r0,4 ; y = 4
-;call set_pixel
+; test 
+call clear_leds					;|--
+addi a0,r0,3 ; x = 3			;| On definit la head à la coord(3,4) = GSA(28)
+addi a1,r0,4 ; y = 4			;|
+addi a2,r0,28 ; (3,4) == 28		;|
+stw a0, HEAD_X(zero)			;| On load les coordonnes de la head dans les addresses decrivant les coord de la head
+stw a1, HEAD_Y(zero)			;|--
+
+call set_pixel					; on allume la led qui correspond à la head
+
+addi a0, r0,4					;|--
+stw a0,GSA(a2)					;| Head se déplace vers la droite, info ajouté dans GSA(a2) = GSA(28)
+								;|--
+
 
 call get_input
 
 ; BEGIN:clear_leds
 clear_leds:
-; put LEDS[0..2] to 0x00000000
-stw zero, LEDS(zero) ; Set LEDS[0] to 0
-stw zero, LEDS+4(zero) ; Set LEDS[1] to 0
-stw zero, LEDS+8(zero) ; Set LEDS[2] to 0
+	; put LEDS[0..2] to 0x00000000
+	stw zero, LEDS(zero) ; Set LEDS[0] to 0
+	stw zero, LEDS+4(zero) ; Set LEDS[1] to 0
+	stw zero, LEDS+8(zero) ; Set LEDS[2] to 0
 ret
 ; END:clear_leds
 
@@ -70,9 +80,9 @@ get_input:
 
 	ldw t5, GSA(t4) 	; infos sur la head
 	
-	;--- 1.5 recuperer la direction actuelle
+	;--- 1.5 recuperer la direction actuelle de la tete
 	addi t6,zero,7 ; masque sur les 3 premiers bits pour savoir la direction
-	and t6,t6,t5 ; t6 est la direction actuelle
+	and t6,t6,t5 ; t6 est la direction actuelle de la tete
 	
 
 	;--- 2. get the Buttons info for the new direction
@@ -107,7 +117,24 @@ get_input:
 
 ; BEGIN:move_snake
 move_snake:
-; your implementation code
+	;--- 1 . load the value of the head
+	ldw t0, HEAD_X(zero) 		; x coordinate of head
+	ldw t1, HEAD_Y(zero) 		; y coordinate of head
+
+	andi t2, t0, 12 	; bits[3,2] de x
+	slli t2, t2, 5 		; shift de 5 à gauche pour multiplier par 32
+
+	andi t3, t0, 3 		; bits[1,0] de x
+	slli t3, t3,8 		; shift de 3 à gauche pour multiplier par 8
+
+	add t4, t1,t3 		; t4 = head_y + 8 * head_x(1,0) = position dans une LED
+	add t4, t4,t2 		; t4 = 32 * head_x(3,2) + 8 * head_x(1,0) + head_y = position dans GSA
+
+	ldw t5, GSA(t4) 	; infos sur la head
+
+	;--- 1.5 recuperer la direction actuelle de la tete
+	addi t6,zero,7 ; masque sur les 3 premiers bits pour savoir la direction
+	and t6,t6,t5 ; t6 est la direction actuelle de la tete
 ret
 ; END:move_snake
 
