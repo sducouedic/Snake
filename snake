@@ -12,23 +12,30 @@
 ;ldw t1, SCORE (zero) ; load the score in t1
 
 
-
+; ----------------------TEST---------------------------------------------
 ; test 
 call clear_leds					;|--
 addi a0,r0,3 ; x = 3			;| On definit la head à la coord(3,4) = GSA(28)
 addi a1,r0,4 ; y = 4			;|
 addi a2,r0,28 ; (3,4) == 28		;|
 stw a0, HEAD_X(zero)			;| On load les coordonnes de la head dans les addresses decrivant les coord de la head
-stw a1, HEAD_Y(zero)			;|--
+stw a1, HEAD_Y(zero)			;|
+stw a0, TAIL_X(zero)			;| On load ces memes coordonnees dans la tail car comme un element dans 
+stw a1, TAIL_Y(zero)			;| le snake, tail == head
+								;|---
 
 call set_pixel					; on allume la led qui correspond à la head
 
 addi a0, r0,4					;|--
 stw a0,GSA(a2)					;| Head se déplace vers la droite, info ajouté dans GSA(a2) = GSA(28)
 								;|--
-
-
 call get_input
+addi a2,r0,28
+ldw a3, GSA(a2)
+
+call move_snake
+
+;-------------------------------------------------------------------------
 
 ; BEGIN:clear_leds
 clear_leds:
@@ -70,10 +77,10 @@ get_input:
 	ldw t1, HEAD_Y(zero) 		; y coordinate of head
 
 	andi t2, t0, 12 	; bits[3,2] de x
-	slli t2, t2, 5 		; shift de 5 à gauche pour multiplier par 32
+	slli t2, t2, 3 		; shift de 5 à gauche pour multiplier par 32
 
 	andi t3, t0, 3 		; bits[1,0] de x
-	slli t3, t3,8 		; shift de 3 à gauche pour multiplier par 8
+	slli t3, t3,3 		; shift de 3 à gauche pour multiplier par 8
 
 	add t4, t1,t3 		; t4 = head_y + 8 * head_x(1,0) = position dans une LED
 	add t4, t4,t2 		; t4 = 32 * head_x(3,2) + 8 * head_x(1,0) + head_y = position dans GSA
@@ -90,6 +97,8 @@ get_input:
 	stw zero, BUTTONS+4(zero)   ; On reinitialise edgecapture
 
 	;--- 3. get in which direction we want to go
+	bne t0,zero,4	; s'il n'y a pas de changement de direction, on ne fait rien
+	ret
 	addi t7,zero,0
 	loop:
 	addi t7,t7,1 ; count++
@@ -102,7 +111,6 @@ get_input:
 	;registre utilise actuellement: t4(position de la head),t5(variable tete), t6 (direction actuelle),t7 (direction voulu)
 	addi t0, zero ,5 ; direction oppose
 	add t1,t6,t7
-	
 	
 	;---5. update the head snake direction if not opposite direction !
 	bne t0,t1,4
@@ -117,24 +125,108 @@ get_input:
 
 ; BEGIN:move_snake
 move_snake:
+	
 	;--- 1 . load the value of the head
 	ldw t0, HEAD_X(zero) 		; x coordinate of head
 	ldw t1, HEAD_Y(zero) 		; y coordinate of head
 
-	andi t2, t0, 12 	; bits[3,2] de x
-	slli t2, t2, 5 		; shift de 5 à gauche pour multiplier par 32
+	andi t2, t0, 12 ; x[3,2] << 2
+	slli t2, t2, 3 	; x << 5 = 32*x
 
-	andi t3, t0, 3 		; bits[1,0] de x
-	slli t3, t3,8 		; shift de 3 à gauche pour multiplier par 8
+	andi t3, t0, 3 ; x[1,0]
+	slli t3, t3,3 ; x << 3 = 8*x
 
-	add t4, t1,t3 		; t4 = head_y + 8 * head_x(1,0) = position dans une LED
-	add t4, t4,t2 		; t4 = 32 * head_x(3,2) + 8 * head_x(1,0) + head_y = position dans GSA
+	add t4, t1,t3 ; t4 = y + 8*x[1,0] = position dans une LED
+	add t4, t4,t2 ; t4 = 32 * x[3,2] + 8 * x[1,0] + y = position dans GSA
 
 	ldw t5, GSA(t4) 	; infos sur la head
 
 	;--- 1.5 recuperer la direction actuelle de la tete
 	addi t6,zero,7 ; masque sur les 3 premiers bits pour savoir la direction
 	and t6,t6,t5 ; t6 est la direction actuelle de la tete
+
+	;--- 2 . calcul de la nouvelle position(x,y) de la tete en fonction de sa direction
+	addi t2,zero,1;	1 = left			;|---
+	bne t6,t2,4; on saute si d != 1		;| si la direction == 1 (left), alors new_x = x - 1
+	addi t0,t0, -1;	x = x - 1			;|---
+
+	addi t2,zero,2; 2 = right			;|---
+	bne t6,t2,4; on saute si d != 2		;| si la direction == 2 (up), alors new_y = y - 1
+	addi t1,t1,-1; y = y - 1			;|---
+
+	addi t2,zero,3; 3 = down			;|---
+	bne t6,t2,4; on saute si d != 3		;| si la direction == 3 (down), alors new_y = y + 1
+	addi t1,t1,1; y = y + 1				;|---
+	
+	addi t2,zero,4; 4 = right			;|---
+	bne t6,t2,4; on saute si d != 4		;| si la direction == 4 (right), alors new_x = x + 1
+	addi t0,t0,1; x = x + 1				;|---
+
+	;--- 3 . on stocke les nouvelles coordonnées de la tete dans HEAD_X/Y et GSA
+	stw t0, HEAD_X(zero) ; t0 = head_x			
+	stw t1, HEAD_Y(zero) ; t1 = head_y			
+									
+
+	andi t2, t0, 12 ; x[3,2] << 2		;|---
+	slli t2, t2, 3 	; x << 5 = 32*x		;|
+										;|
+	andi t3, t0, 3 ; x[1,0]				;|	
+	slli t3, t3,3 ; x << 3 = 8*x		;| t4 = position de la tete dans la GSA en fonction de new_x et de new_y
+										;|	
+	add t4, t1,t3 ; t4 = y + 8*x[1,0] = position dans une LED
+	add t4, t4,t2 ; t4 = 32 * x[3,2] + 8 * x[1,0] + y = position dans GSA
+										;| 
+										;|---
+
+										;|---
+	stw t6,GSA(t4); GSA(t4) = d			;| t6 contient toujours la direction de la tete (qui n'a pas change)
+										;| et stocke cette direction dans la GSA à la nouvelle position
+										;|---
+
+
+	;--- 4. on recupere la position actuelle de la queue (tail) et sa direction
+	ldw t0,TAIL_X(zero); t0 = tail_x
+	ldw t1,TAIL_Y(zero); t1 = tail_y	
+
+	andi t2, t0, 12 ; x[3,2] << 2		;|---
+	slli t2, t2, 3 	; x << 5 = 32*x		;|
+										;|
+	andi t3, t0, 3 ; x[1,0]				;|	
+	slli t3, t3,3 ; x << 3 = 8*x		;| t4 = position de la queue dans la GSA (en fonction de x et y)
+										;|	
+	add t4, t1,t3 ; t4 = y + 8*x[1,0] = position dans une LED
+	add t4, t4,t2 ; t4 = 32 * x[3,2] + 8 * x[1,0] + y = position dans GSA
+										;| 
+										;|---
+
+	;--- 4.5 recuperer la direction actuelle de la tail
+	ldw t5, GSA(t4) ; infos de la tail	;|---
+	addi t6,zero,7 ; masque sur [2,1,0]	;| t6 = direction actuelle de la queue
+	and t6,t6,t5 ; 						;|---
+
+	;--- 5 . calcul de la nouvelle position(x,y) de la queue en fonction de sa direction
+	addi t2,zero,1;	1 = left			;|---
+	bne t6,t2,4; on saute si d != 1		;| si la direction == 1 (left), alors new_x = x - 1
+	addi t0,t0, -1;	x = x - 1			;|---
+
+	addi t2,zero,2; 2 = up			;|---
+	bne t6,t2,4; on saute si d != 2		;| si la direction == 2 (up), alors new_y = y - 1
+	addi t1,t1,-1; y = y - 1			;|---
+
+	addi t2,zero,3; 3 = down			;|---
+	bne t6,t2,4; on saute si d != 3		;| si la direction == 3 (down), alors new_y = y + 1
+	addi t1,t1,1; y = y + 1				;|---
+	
+	addi t2,zero,4; 4 = right			;|---
+	bne t6,t2,4; on saute si d != 4		;| si la direction == 4 (right), alors new_x = x + 1
+	addi t0,t0,1; x = x + 1				;|---
+	
+	;--- 6 . on stocke les nouvelles coordonnées de la queue dans TAIL_X/Y et on supprime l'ancienne queue de la GSA
+	stw t0, TAIL_X(zero) ; t0 = tail_x			
+	stw t1, TAIL_Y(zero) ; t1 = tail_y			
+									
+	stw zero,GSA(t4)	; GSA(ancienne position de la TAIL) = 0 ce qui veut dire ne contient rien
+
 ret
 ; END:move_snake
 
