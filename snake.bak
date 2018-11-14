@@ -16,6 +16,8 @@
 ; test 
 ;addi sp,zero,0
 
+init:
+addi v0,zero,0
 addi a0,r0,0 ; x = 0			;| On definit la head à la coord(3,4) = GSA(28)
 addi a1,r0,0 ; y = 0			;|
 addi a2,r0,0 ; (0,0) == 0    	;|
@@ -30,7 +32,11 @@ stw a0,GSA(a2)					;| Head se déplace vers la droite, info ajouté dans GSA(a2) =
 								;|--
 
 addi a0,zero,0
+addi s0,zero,0                  ; le score global des unités
+addi s1,zero,0                  ; le score global des dizaines
 
+call draw_array
+call wait
 
 call clear_leds	
 call create_food		
@@ -42,17 +48,24 @@ call hit_test;--- see if there is a collision
 ;--- check what type of collision
 addi t1,zero,1
 addi t2,zero,2
-beq v0,t2,rien;--- if type == 2 then terminate
+beq v0,t2,terminate;--- if type == 2 then terminate
 
 addi a0,zero,0
-bne v0,t1,move;--- if type == 1 then call createfood
+bne v0,t1,move;--- if type == 1 pomme est mangée : then call createfood
 addi a0,zero,1
 call create_food
+call increment_score
 move:
 call move_snake
+call display_score
+
+call restart_game ;--- check if we have to restart the game
+addi t0,zero,1
+beq v0,t0,init
+
 br loop_main
 
-rien:
+terminate:
 call wait
 
 ;call get_input
@@ -73,6 +86,29 @@ clear_leds:
 ret
 ; END:clear_leds
 
+; BEGIN:increment_score
+increment_score:
+
+add t0,zero,s0 ; unité
+addi t2,zero,10 ; limite
+addi t0,t0,1
+bge t0,t2,change_unite
+addi s0,s0,1
+ret
+
+
+change_unite:
+addi s0,zero,0
+add t1,zero,s1 ; dizaine
+addi t1,t1,1
+bge t1,t2,change_dizaine
+addi s1,s1,1
+ret
+
+change_dizaine:
+addi s1,zero,0
+ret
+; END:increment_score
 
 ; BEGIN:set_pixel
 set_pixel:
@@ -92,7 +128,6 @@ ret
 
 ; BEGIN:draw_array
 draw_array:
-	;--- 1 clear all leds
 
 	;--- 2 access each cell of GSA and activate it if 1
 ;	nombrede32bits tmp;
@@ -430,21 +465,61 @@ ret
 
 ; BEGIN:display_score
 display_score:
-; your implementation code
+
+;s0 est le score des unités
+;s1 est le score des dizaines
+;il suffit de bien les afficher
+
+slli t0,s0,2
+slli t1,s1,2
+
+ldw t0,font_data(t0)
+ldw t1,font_data(t1)
+ldw t2,font_data(zero)
+
+
+stw t0, SEVEN_SEGS+12(zero) ; car seven_segs [0,1,2,3]
+stw t1, SEVEN_SEGS+8(zero) ; car seven_segs [0,1,2,3]
+stw t2, SEVEN_SEGS+4(zero) ; car seven_segs [0,1,2,3]
+stw t2, SEVEN_SEGS(zero) ; car seven_segs [0,1,2,3]
+
 ret
 ; END:display_score
 
 
 ; BEGIN:restart_game
 restart_game:
-; your implementation code
+	;--- 2. get the Buttons info for the restart
+	ldw t0, BUTTONS+4(zero)		; on mets dans t0 la valeur de edgecapture 
+	stw zero, BUTTONS+4(zero)   ; On reinitialise edgecapture
+
+	;---
+	addi t1,zero,16
+	addi v0,zero,0
+	beq t0,t1,4
+	ret
+	addi v0,zero,1
+	
 ret
 ; END:restart_game
 
 ;BEGIN:wait
 wait:
-addi t0,zero,100
+addi t0,zero,5000
 addi t0,t0,-1
 bne t0,zero,-8
 ret
 ;END:wait
+
+font_data:
+	.word 0xFC ; 0
+	.word 0x60 ; 1
+	.word 0xDA ; 2
+	.word 0xF2 ; 3
+	.word 0x66 ; 4
+	.word 0xB6 ; 5
+	.word 0xBE ; 6
+	.word 0xE0 ; 7
+	.word 0xFE ; 8
+	.word 0xF6 ; 9
+
