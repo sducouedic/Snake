@@ -9,14 +9,14 @@
 .equ RANDOM_NUM, 0x2010 ; Random number generator address
 .equ BUTTONS,    0x2030 ; Button addresses
 
-;ldw t1, SCORE (zero) ; load the score in t1
 
+; ----------------------MAIN---------------------------------------------
+; 
 
-; ----------------------TEST---------------------------------------------
-; test 
-;addi sp,zero,0
 
 init:
+addi sp,zero,LEDS
+call reset_GSA
 addi v0,zero,0
 addi a0,r0,0 ; x = 0			;| On definit la head à la coord(3,4) = GSA(28)
 addi a1,r0,0 ; y = 0			;|
@@ -35,13 +35,10 @@ addi a0,zero,0
 addi s0,zero,0                  ; le score global des unités
 addi s1,zero,0                  ; le score global des dizaines
 
-call draw_array
-call wait
-
 call clear_leds	
 call create_food		
 loop_main:
-call wait
+;call wait
 call draw_array ;--- draw the array
 call get_input ;--- get user input
 call hit_test;--- see if there is a collision
@@ -67,12 +64,6 @@ br loop_main
 
 terminate:
 call wait
-
-;call get_input
-;call move_snake
-;call draw_array
-;call create_food
-;call draw_array
 
 
 ;-------------------------------------------------------------------------
@@ -109,6 +100,21 @@ change_dizaine:
 addi s1,zero,0
 ret
 ; END:increment_score
+
+; BEGIN:reset_GSA
+reset_GSA:
+addi t0,zero,0
+addi t1,zero,96
+
+boucle_reset_GSA:
+slli t2,t0,2
+stw zero,GSA(t2)
+
+addi t0,t0,1
+blt t0,t1,boucle_reset_GSA
+ret
+; END:reset_GSA
+
 
 ; BEGIN:set_pixel
 set_pixel:
@@ -506,6 +512,7 @@ ret
 ;BEGIN:wait
 wait:
 addi t0,zero,5000
+slli t0,t0,10
 addi t0,t0,-1
 bne t0,zero,-8
 ret
