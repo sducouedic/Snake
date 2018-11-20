@@ -13,10 +13,17 @@
 ; ----------------------MAIN---------------------------------------------
 ; 
 
+terminate:
+call restart_game
+addi t0,zero,1
+beq v0,t0,init
+call draw_array
+br terminate
 
 init:
 addi sp,zero,LEDS
 call reset_GSA
+stw zero, BUTTONS+4(zero)   	; On reinitialise edgecapture
 addi v0,zero,0
 addi a0,r0,0 ; x = 0			;| On definit la head à la coord(3,4) = GSA(28)
 addi a1,r0,0 ; y = 0			;|
@@ -36,24 +43,28 @@ addi s0,zero,0                  ; le score global des unités
 addi s1,zero,0                  ; le score global des dizaines
 
 call clear_leds	
-call create_food		
+call create_food	
+call draw_array
+	
 loop_main:
-;call wait
-call draw_array ;--- draw the array
+call wait
 call get_input ;--- get user input
-call hit_test;--- see if there is a collision
+call hit_test ;--- see if there is a collision
 ;--- check what type of collision
 addi t1,zero,1
 addi t2,zero,2
-beq v0,t2,terminate;--- if type == 2 then terminate
+beq v0,t2,terminate ;--- if type == 2 then terminate
 
 addi a0,zero,0
-bne v0,t1,move;--- if type == 1 pomme est mangée : then call createfood
+addi v0,zero,0
+bne v0,t1,move ;--- if type == 1 pomme est mangée : then call createfood
 addi a0,zero,1
 call create_food
+call draw_array
 call increment_score
 move:
 call move_snake
+call draw_array ;--- draw the array
 call display_score
 
 call restart_game ;--- check if we have to restart the game
@@ -61,9 +72,6 @@ addi t0,zero,1
 beq v0,t0,init
 
 br loop_main
-
-terminate:
-call wait
 
 
 ;-------------------------------------------------------------------------
@@ -517,6 +525,13 @@ addi t0,t0,-1
 bne t0,zero,-8
 ret
 ;END:wait
+
+wait1:
+addi t0,zero,100
+slli t0,t0,0
+addi t0,t0,-1
+bne t0,zero,-8
+ret
 
 font_data:
 	.word 0xFC ; 0
