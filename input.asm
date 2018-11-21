@@ -17,38 +17,13 @@
 terminate:
 call restart_game
 addi t0,zero,1
-beq v0,t0,init
+beq v0,t0,start
 call draw_array
 br terminate
 
 
-init:
-addi sp,zero,LEDS
-call reset_GSA
-stw zero, SCORE(zero)   	; On reinitialise edgecapture
-stw zero, BUTTONS+4(zero)   	; On reinitialise edgecapture
-addi v0,zero,0
-addi a0,zero,0 ; x = 0			;| On definit la head a la coord(3,4) = GSA(28)
-addi a1,zero,0 ; y = 0			;|
-addi a2,zero,0 ; (0,0) == 0    	;|
-stw a0, HEAD_X(zero)			;| On load les coordonnes de la head dans les addresses decrivant les coord de la head
-stw a1, HEAD_Y(zero)			;|
-stw a0, TAIL_X(zero)			;| On load ces memes coordonnees dans la tail car comme un element dans 
-stw a1, TAIL_Y(zero)			;| le snake, tail == head
-								;|---
+start:
 
-addi a0,zero,4					;|--
-stw a0,GSA(a2)					;| Head se deplace vers la droite, info ajoute dans GSA(a2) = GSA(28)
-								;|--
-
-addi a0,zero,0
-addi s0,zero,0                  ; le score global des unites
-addi s1,zero,0                  ; le score global des dizaines
-
-call clear_leds	
-call create_food	
-call display_score
-call draw_array
 call wait
 	
 loop_main:
@@ -74,7 +49,7 @@ call display_score
 call wait
 call restart_game ;--- check if we have to restart the game
 addi t0,zero,1
-beq v0,t0,init
+beq v0,t0,start
 
 br loop_main
 
@@ -97,20 +72,6 @@ addi t0,t0,1
 stw t0, SCORE(zero)
 ret
 ; END:increment_score
-
-; BEGIN:reset_GSA
-reset_GSA:
-addi t0,zero,0
-addi t1,zero,96
-
-boucle_reset_GSA:
-slli t2,t0,2
-stw zero,GSA(t2)
-
-addi t0,t0,1
-blt t0,t1,boucle_reset_GSA
-ret
-; END:reset_GSA
 
 
 ; BEGIN:set_pixel
@@ -517,9 +478,72 @@ restart_game:
 	addi v0,zero,0
 	bge t0,t1,4
 	ret
-	addi v0,zero,1
-	
-ret
+
+	;reset all variables
+	addi sp,zero,LEDS               ; On reinitialise stack pointer
+	addi sp,sp,-4
+	stw ra, 0x00000000(sp)
+	call reset_GSA
+	ldw ra, 0x00000000(sp)
+	addi sp,sp,4
+
+	stw zero, SCORE(zero)        	; On reinitialise le score
+	stw zero, BUTTONS+4(zero)    	; On reinitialise edgecapture
+	addi sp,sp,-4
+	stw ra, 0x00000000(sp)
+	call clear_leds					; On reinitialise les leds
+	ldw ra, 0x00000000(sp)
+	addi sp,sp,4
+
+	addi v0,zero,0
+	addi t0,zero,0 ; x = 0			;| On definit la head a la coord(0,0) = GSA(0)
+	addi t1,zero,0 ; y = 0			;|
+	addi t2,zero,0 ; (0,0) == 0    	;|
+	stw t0, HEAD_X(zero)			;| On load les coordonnes de la head dans les addresses decrivant les coord de la head
+	stw t1, HEAD_Y(zero)			;|
+	stw t0, TAIL_X(zero)			;| On load ces memes coordonnees dans la tail car comme un element dans 
+	stw t1, TAIL_Y(zero)			;| le snake, tail == head
+								    ;|---
+    addi t0,zero,4					;|--
+	stw t0,GSA(t2)					;| Head se deplace vers la droite, info ajoute dans GSA(a2) = GSA(0)
+									;|--
+	addi t0,zero,0
+
+	addi sp,sp,-4
+	stw ra, 0x00000000(sp)
+	call create_food
+	ldw ra, 0x00000000(sp)
+	addi sp,sp,4
+
+	addi sp,sp,-4
+	stw ra, 0x00000000(sp)
+	call display_score
+	ldw ra, 0x00000000(sp)
+	addi sp,sp,4
+
+	addi sp,sp,-4
+	stw ra, 0x00000000(sp)
+	call draw_array
+	ldw ra, 0x00000000(sp)
+	addi sp,sp,4
+
+	addi v0,zero,1 ; On return v0 = 1
+	ret
+
+	; BEGIN:reset_GSA
+	reset_GSA:
+	addi t0,zero,0
+	addi t1,zero,96
+
+	boucle_reset_GSA:
+	slli t2,t0,2
+	stw zero,GSA(t2)
+
+	addi t0,t0,1
+	blt t0,t1,boucle_reset_GSA
+	ret
+	; END:reset_GSA
+
 ; END:restart_game
 
 ; BEGIN:wait
