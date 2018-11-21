@@ -1,4 +1,3 @@
-
 .equ HEAD_X,     0x1000 ; snake head's position on x-axis
 .equ HEAD_Y,     0x1004 ; snake head's position on y-axis
 .equ TAIL_X,     0x1008 ; snake tail's position on x-axis
@@ -10,69 +9,108 @@
 .equ RANDOM_NUM, 0x2010 ; Random number generator address
 .equ BUTTONS,    0x2030 ; Button addresses
 
-;ldw t1, SCORE (zero) ; load the score in t1
+
+; ----------------------MAIN---------------------------------------------
+; 
 
 
-; ----------------------TEST---------------------------------------------
-; test 
-;addi sp,zero,0
+terminate:
+call restart_game
+addi t0,zero,1
+beq v0,t0,init
+call draw_array
+br terminate
 
-addi a0,r0,0 ; x = 0			;| On definit la head à la coord(3,4) = GSA(28)
-addi a1,r0,0 ; y = 0			;|
-addi a2,r0,0 ; (0,0) == 0    	;|
+
+init:
+addi sp,zero,LEDS
+call reset_GSA
+stw zero, SCORE(zero)   	; On reinitialise edgecapture
+stw zero, BUTTONS+4(zero)   	; On reinitialise edgecapture
+addi v0,zero,0
+addi a0,zero,0 ; x = 0			;| On definit la head a la coord(3,4) = GSA(28)
+addi a1,zero,0 ; y = 0			;|
+addi a2,zero,0 ; (0,0) == 0    	;|
 stw a0, HEAD_X(zero)			;| On load les coordonnes de la head dans les addresses decrivant les coord de la head
 stw a1, HEAD_Y(zero)			;|
 stw a0, TAIL_X(zero)			;| On load ces memes coordonnees dans la tail car comme un element dans 
 stw a1, TAIL_Y(zero)			;| le snake, tail == head
 								;|---
 
-addi a0, r0,4					;|--
-stw a0,GSA(a2)					;| Head se déplace vers la droite, info ajouté dans GSA(a2) = GSA(28)
+addi a0,zero,4					;|--
+stw a0,GSA(a2)					;| Head se deplace vers la droite, info ajoute dans GSA(a2) = GSA(28)
 								;|--
 
 addi a0,zero,0
-
+addi s0,zero,0                  ; le score global des unites
+addi s1,zero,0                  ; le score global des dizaines
 
 call clear_leds	
-call create_food		
-loop_main:
+call create_food	
+call display_score
+call draw_array
 call wait
-call draw_array ;--- draw the array
+	
+loop_main:
+
 call get_input ;--- get user input
-call hit_test;--- see if there is a collision
+call hit_test ;--- see if there is a collision
 ;--- check what type of collision
 addi t1,zero,1
 addi t2,zero,2
-beq v0,t2,rien;--- if type == 2 then terminate
-
+beq v0,t2,terminate ;--- if type == 2 then terminate
 addi a0,zero,0
-bne v0,t1,move;--- if type == 1 then call createfood
+;-- addi v0,zero,0
+bne v0,t1,move ;--- if type == 1 pomme est mangee : then call createfood
 addi a0,zero,1
 call create_food
+call draw_array
+call increment_score
 move:
 call move_snake
-br loop_main
+call draw_array ;--- draw the array
+call display_score
 
-rien:
 call wait
+call restart_game ;--- check if we have to restart the game
+addi t0,zero,1
+beq v0,t0,init
 
-;call get_input
-;call move_snake
-;call draw_array
-;call create_food
-;call draw_array
-
+br loop_main
 
 ;-------------------------------------------------------------------------
 
 ; BEGIN:clear_leds
 clear_leds:
-	; put LEDS[0..2] to 0x00000000
+	; put LEDS[0_.2] to 0x00000000
 	stw zero, LEDS(zero) ; Set LEDS[0] to 0
 	stw zero, LEDS+4(zero) ; Set LEDS[1] to 0
 	stw zero, LEDS+8(zero) ; Set LEDS[2] to 0
 ret
 ; END:clear_leds
+
+; BEGIN:increment_score
+increment_score:
+
+ldw t0, SCORE(zero)
+addi t0,t0,1
+stw t0, SCORE(zero)
+ret
+; END:increment_score
+
+; BEGIN:reset_GSA
+reset_GSA:
+addi t0,zero,0
+addi t1,zero,96
+
+boucle_reset_GSA:
+slli t2,t0,2
+stw zero,GSA(t2)
+
+addi t0,t0,1
+blt t0,t1,boucle_reset_GSA
+ret
+; END:reset_GSA
 
 
 ; BEGIN:set_pixel
@@ -80,7 +118,7 @@ set_pixel:
 ; ao:x and a1:y
 andi t0,a0,12 ; bits[3,2] de x
 andi t1,a0,3 ; bits[1,0] de x
-slli t2, t1,3 ;shift de 3 à gauche pour multiplier par 8 
+slli t2, t1,3 ;shift de 3 a gauche pour multiplier par 8 
 add t3, a1,t2 ; t3 est la position du bit voulu a 1
 addi t4,zero,1 ; vaut 1 que l'on va shifter de t3 positions
 sll t4, t4, t3
@@ -93,7 +131,6 @@ ret
 
 ; BEGIN:draw_array
 draw_array:
-	;--- 1 clear all leds
 
 	;--- 2 access each cell of GSA and activate it if 1
 ;	nombrede32bits tmp;
@@ -108,7 +145,7 @@ draw_array:
 ;		LEDS[i] = tmp (8)
 ;	}	
 															;|---
-	addi t0,zero,0 ; t0 = tmp								;| on definit la variable tmp, qui represente la valeur de la LED numero i, et i à 0 pour la boucle for (1)
+	addi t0,zero,0 ; t0 = tmp								;| on definit la variable tmp, qui represente la valeur de la LED numero i, et i a 0 pour la boucle for (1)
 	addi t1,zero,0 ; t1 = i qu on initialise a zero			;|---
 	addi t6,zero,32 ; t6 = 32
 	addi t7,zero,1
@@ -154,10 +191,10 @@ get_input:
 	ldw t1, HEAD_Y(zero) 		; y coordinate of head
 
 	andi t2, t0, 12 	; bits[3,2] de x
-	slli t2, t2, 3 		; shift de 5 à gauche pour multiplier par 32
+	slli t2, t2, 3 		; shift de 5 a gauche pour multiplier par 32
 
 	andi t3, t0, 3 		; bits[1,0] de x
-	slli t3, t3,3 		; shift de 3 à gauche pour multiplier par 8
+	slli t3, t3,3 		; shift de 3 a gauche pour multiplier par 8
 
 	add t4, t1,t3 		; t4 = head_y + 8 * head_x(1,0) = position dans une LED
 	add t4, t4,t2 		; t4 = 32 * head_x(3,2) + 8 * head_x(1,0) + head_y = position dans GSA
@@ -176,6 +213,9 @@ get_input:
 
 	;--- 3. get in which direction we want to go
 	bne t0,zero,4	; s'il n'y a pas de changement de direction, on ne fait rien
+	ret
+	addi t7,zero,16
+	bne t0,t7,4 ; si ce n'est pas le button reset
 	ret
 	addi t7,zero,0
 	loop:
@@ -241,7 +281,7 @@ move_snake:
 	bne t6,t2,4; on saute si d != 4		;| si la direction == 4 (right), alors new_x = x + 1
 	addi t0,t0,1; x = x + 1				;|---
 
-	;--- 3 . on stocke les nouvelles coordonnées de la tete dans HEAD_X/Y et GSA
+	;--- 3 . on stocke les nouvelles coordonnees de la tete dans HEAD_X/Y et GSA
 	stw t0, HEAD_X(zero) ; t0 = head_x			
 	stw t1, HEAD_Y(zero) ; t1 = head_y			
 									
@@ -259,7 +299,7 @@ move_snake:
 
 	slli t4,t4, 2									;|---
 	stw t6,GSA(t4); GSA(t4) = d			;| t6 contient toujours la direction de la tete (qui n'a pas change)
-										;| et stocke cette direction dans la GSA à la nouvelle position
+										;| et stocke cette direction dans la GSA a la nouvelle position
 										;|---
 
 
@@ -301,7 +341,7 @@ move_snake:
 	bne t6,t2,4; on saute si d != 4		;| si la direction == 4 (right), alors new_x = x + 1
 	addi t0,t0,1; x = x + 1				;|---
 	
-	;--- 6 . on stocke les nouvelles coordonnées de la queue dans TAIL_X/Y et on supprime l'ancienne queue de la GSA
+	;--- 6 . on stocke les nouvelles coordonnees de la queue dans TAIL_X/Y et on supprime l'ancienne queue de la GSA
 	beq a0,zero,4		; Ne supprime pas la queue s'il y a une collision avec la nourriture
 	ret
 	stw t0, TAIL_X(zero) ; t0 = tail_x			
@@ -315,10 +355,10 @@ ret
 ; BEGIN:create_food
 create_food:
 
-	;--- 1. on genere l'indice aléatoire
+	;--- 1. on genere l'indice aleatoire
 	genere:
-	;ldw t0, RANDOM_NUM(zero)
-	addi t0,t0,35
+	ldw t0, RANDOM_NUM(zero)
+;	addi t0,t0,35
 	andi t0,t0,255 ; on retient seulement les huit premiers bits du random
 
 	;--- 2. teste sur l'indice
@@ -327,12 +367,12 @@ create_food:
 	bge t0,t1, genere
 	blt t0,zero, genere
 
-	;--- 2.2 teste si ça collide
+	;--- 2.2 teste si ca collide
 	slli t0,t0,2
 	ldw t1, GSA(t0)
 	bne t1,zero,genere
 
-	;--- 3. si ça ne collide pas, on cree le food
+	;--- 3. si ca ne collide pas, on cree le food
 	addi t2,zero,5 ; on mets la valeur 5 representant la pomme dans le GSA
 	stw t2, GSA(t0)
 	
@@ -431,21 +471,77 @@ ret
 
 ; BEGIN:display_score
 display_score:
-; your implementation code
+
+;t0 est le score des unites
+;t1 est le score des dizaines
+;il suffit de bien les afficher
+
+
+;--- read from memory
+ldw t0, SCORE(zero)
+addi t1,zero,0
+addi t3,zero,10
+;--- get unit score
+get_dizaine:
+blt t0,t3,get_unit
+addi t1,t1,1
+addi t0,t0,-10
+;--- get dizaine score
+get_unit:
+
+slli t0,t0,2
+slli t1,t1,2
+
+;--- print
+ldw t0,font_data(t0)
+ldw t1,font_data(t1)
+ldw t2,font_data(zero)
+
+
+stw t0, SEVEN_SEGS+12(zero) ; car seven_segs [0,1,2,3]
+stw t1, SEVEN_SEGS+8(zero) ; car seven_segs [0,1,2,3]
+stw t2, SEVEN_SEGS+4(zero) ; car seven_segs [0,1,2,3]
+stw t2, SEVEN_SEGS(zero) ; car seven_segs [0,1,2,3]
+
 ret
 ; END:display_score
 
 
 ; BEGIN:restart_game
 restart_game:
-; your implementation code
+	;--- 2. get the Buttons info for the restart
+	ldw t0, BUTTONS+4(zero)		; on mets dans t0 la valeur de edgecapture 
+
+	;---
+	addi t1,zero,16
+	addi v0,zero,0
+	bge t0,t1,4
+	ret
+	addi v0,zero,1
+	
 ret
 ; END:restart_game
 
-;BEGIN:wait
+; BEGIN:wait
 wait:
-addi t0,zero,100
+addi t0,zero,5000
+slli t0,t0,10
+wait_boucle:
 addi t0,t0,-1
-bne t0,zero,-8
+bne t0,zero,wait_boucle
 ret
-;END:wait
+; END:wait
+
+
+font_data:
+	.word 0xFC ; 0
+	.word 0x60 ; 1
+	.word 0xDA ; 2
+	.word 0xF2 ; 3
+	.word 0x66 ; 4
+	.word 0xB6 ; 5
+	.word 0xBE ; 6
+	.word 0xE0 ; 7
+	.word 0xFE ; 8
+	.word 0xF6 ; 9
+
