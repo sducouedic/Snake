@@ -20,6 +20,7 @@ beq v0,t0,init
 call draw_array
 br terminate
 
+
 init:
 addi sp,zero,LEDS
 call reset_GSA
@@ -45,18 +46,19 @@ addi s1,zero,0                  ; le score global des dizaines
 call clear_leds	
 call create_food	
 call draw_array
+call display_score
+call wait
 	
 loop_main:
-call wait
+
 call get_input ;--- get user input
 call hit_test ;--- see if there is a collision
 ;--- check what type of collision
 addi t1,zero,1
 addi t2,zero,2
 beq v0,t2,terminate ;--- if type == 2 then terminate
-
 addi a0,zero,0
-addi v0,zero,0
+;-- addi v0,zero,0
 bne v0,t1,move ;--- if type == 1 pomme est mangée : then call createfood
 addi a0,zero,1
 call create_food
@@ -67,6 +69,7 @@ call move_snake
 call draw_array ;--- draw the array
 call display_score
 
+call wait
 call restart_game ;--- check if we have to restart the game
 addi t0,zero,1
 beq v0,t0,init
@@ -225,6 +228,9 @@ get_input:
 	;--- 3. get in which direction we want to go
 	bne t0,zero,4	; s'il n'y a pas de changement de direction, on ne fait rien
 	ret
+	addi t7,zero,16
+	bne t0,t7,4 ; si ce n'est pas le button reset
+	ret
 	addi t7,zero,0
 	loop:
 	addi t7,t7,1 ; count++
@@ -365,8 +371,8 @@ create_food:
 
 	;--- 1. on genere l'indice aléatoire
 	genere:
-	;ldw t0, RANDOM_NUM(zero)
-	addi t0,t0,35
+	ldw t0, RANDOM_NUM(zero)
+;	addi t0,t0,35
 	andi t0,t0,255 ; on retient seulement les huit premiers bits du random
 
 	;--- 2. teste sur l'indice
@@ -505,12 +511,11 @@ ret
 restart_game:
 	;--- 2. get the Buttons info for the restart
 	ldw t0, BUTTONS+4(zero)		; on mets dans t0 la valeur de edgecapture 
-	stw zero, BUTTONS+4(zero)   ; On reinitialise edgecapture
 
 	;---
 	addi t1,zero,16
 	addi v0,zero,0
-	beq t0,t1,4
+	bge t0,t1,4
 	ret
 	addi v0,zero,1
 	
@@ -521,17 +526,21 @@ ret
 wait:
 addi t0,zero,5000
 slli t0,t0,10
+wait_boucle:
 addi t0,t0,-1
-bne t0,zero,-8
+bne t0,zero,wait_boucle
 ret
 ;END:wait
 
+;BEGIN:wait
 wait1:
 addi t0,zero,100
 slli t0,t0,0
+wait_boucle2:
 addi t0,t0,-1
-bne t0,zero,-8
+bne t0,zero,wait_boucle2
 ret
+;END:wait
 
 font_data:
 	.word 0xFC ; 0
